@@ -1,0 +1,7 @@
+---
+- name: 마스터 노드에서 생성된 명령어로 클러스터에 조인
+  # 👇 이 줄을 수정합니다.
+  ansible.builtin.shell: "{{ hostvars[groups['master'][0]]['join_command'] }} --cri-socket=unix:///run/containerd/containerd.sock"
+  args:
+    # 워커 노드는 조인 후 이 파일이 생기므로, 파일이 없으면 조인을 실행합니다 (멱등성).
+    creates: /etc/kubernetes/kubelet.conf

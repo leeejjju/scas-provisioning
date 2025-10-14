@@ -1,0 +1,45 @@
+---
+# 셸 스크립트 6단계: kubeadm 초기화. admin.conf 파일이 없으면 실행합니다 (멱등성).
+- name: kubeadm으로 클러스터 초기화
+  ansible.builtin.shell: |
+    kubeadm init \
+    --pod-network-cidr=10.244.0.0/16 \
+    --cri-socket=unix:///run/containerd/containerd.sock
+  args:
+    creates: /etc/kubernetes/admin.conf
+
+# 셸 스크립트 7단계: 일반 유저(ubuntu)가 kubectl을 사용하도록 설정
+- name: .kube 디렉토리 생성
+  ansible.builtin.file:
+    path: "/home/ubuntu/.kube"
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0755'
+  become: no # ubuntu 유저 권한으로 실행
+
+- name: admin.conf 파일을 ubuntu 유저의 .kube/config로 복사
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/ubuntu/.kube/config
+    remote_src: yes # 원격지 서버 내에서 파일 복사
+    owner: ubuntu
+    group: ubuntu
+
+# 셸 스크립트 8단계: Flannel 네트워크 플러그인(CNI) 설치
+- name: Flannel CNI 적용
+  # 1. Action: 'shell' 모듈을 실행하라는 핵심 동작
+  ansible.builtin.command: >
+    kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+  # 2. Task Keywords: 위 동작을 어떻게 제어할지에 대한 지침
+  become: no    # root가 아닌 ubuntu 유저로 실행해줘.
+
+# 셸 스크립트 10단계: Join 명령어 생성 및 저장
+- name: 워커 노드를 위한 join 명령어 생성
+  ansible.builtin.command: kubeadm token create --print-join-command
+  register: join_command_raw # 실행 결과를 join_command_raw 변수에 저장
+
+- name: join 명령어 변수 저장
+  ansible.builtin.set_fact:
+    join_command: "{{ join_command_raw.stdout }}" # stdout(표준 출력) 값만 깔끔하게 저장
+
