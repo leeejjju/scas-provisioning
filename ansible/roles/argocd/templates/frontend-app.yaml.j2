@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: frontend
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/leeejjju/scas-manifests.git
+    targetRevision: main
+    path: frontend
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true        # Git에서 삭제된 리소스도 자동 삭제
+      selfHeal: true     # 차이 발생 시 자동 복구
+    syncOptions:
+      - CreateNamespace=true
+

@@ -1,0 +1,41 @@
+- name: Install MetalLB
+  shell: |
+    kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.10/config/manifests/metallb-native.yaml --validate=false
+    kubectl --kubeconfig /etc/kubernetes/admin.conf wait --namespace metallb-system --for=condition=available deployment/controller --timeout=600s
+  args:
+    executable: /bin/bash
+
+
+- name: Copy MetalLB address pool configuration
+  template:
+    src: metallb-ip.yaml.j2
+    dest: /tmp/metallb-ip.yaml
+  vars:
+    metallb_pool_name: scas-pool
+    metallb_adv_name: scas-l2adv
+    metallb_ip_range: 172.31.10.240-172.31.10.250
+
+
+- name: Apply MetalLB configuration
+  shell: |
+    kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f /tmp/metallb-ip.yaml --validate=false
+  args:
+    executable: /bin/bash
+
+
+- name: Get first worker private and public IP
+  shell: |
+    PRIVATE_IP=$(hostname -I | awk '{print $1}')
+    PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
+    echo "$PRIVATE_IP $PUBLIC_IP" > /tmp/ip_map.txt
+  register: ip_map
+
+
+- name: Configure iptables port forwarding to MetalLB IP
+  shell: |
+    PUB_IP=$(cat /tmp/ip_map.txt | awk '{print $2}')
+    METALLB_IP=$(kubectl get svc -n default | grep LoadBalancer | awk '{print $4}' | head -1)
+    sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j DNAT --to-destination ${METALLB_IP}:3000
+    sudo iptables -t nat -A POSTROUTING -j MASQUERADE
+  ignore_errors: yes
+

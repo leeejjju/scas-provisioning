@@ -1,0 +1,38 @@
+---
+- name: Create ArgoCD namespace
+  shell: |
+    /usr/bin/kubectl create namespace argocd || true
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+
+- name: Install ArgoCD core components
+  shell: |
+    /usr/bin/kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml --validate=false
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+
+- name: Wait for ArgoCD to become ready
+  shell: |
+    /usr/bin/kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  register: argocd_ready
+  retries: 5
+  delay: 30
+  until: argocd_ready.rc == 0
+
+
+- name: Copy ArgoCD application manifest templates
+  template:
+    src: frontend-app.yaml.j2
+    dest: /tmp/frontend-app.yaml
+
+
+- name: Apply ArgoCD frontend application
+  shell: |
+    /usr/bin/kubectl apply -f /tmp/frontend-app.yaml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
