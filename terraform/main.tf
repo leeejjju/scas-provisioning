@@ -1,4 +1,3 @@
-
 // # 1. Provider 설정
 terraform {
   required_providers {
@@ -98,7 +97,31 @@ resource "aws_iam_instance_profile" "node_profile" {
   role = aws_iam_role.node_role.name
 }
 
-// # 5. 마스터 노드
+// # 5. user_data 설정
+locals {
+  base_user_data = <<-EOT
+    #!/bin/bash
+    set -eux
+
+    # 호스트네임 설정
+    hostnamectl set-hostname __HOSTNAME__
+
+    # /etc/hosts에 호스트네임 누락 방지
+    if ! grep -q "__HOSTNAME__" /etc/hosts; then
+      echo "127.0.0.1   localhost __HOSTNAME__" >> /etc/hosts
+    fi
+
+    # alias 설정 추가
+    echo 'alias cls="clear; ls"' >> /home/ubuntu/.bashrc
+    echo 'alias c="clear; ls"' >> /home/ubuntu/.bashrc
+
+    # 즉시 적용 (새 세션에도 자동 적용됨)
+    su - ubuntu -c "source /home/ubuntu/.bashrc"
+  EOT
+}
+
+
+// # 6. 마스터 노드
 resource "aws_instance" "k8s-master" {
   ami           = "ami-0c9c942bd7bf113a2"
   instance_type = "t3.small"
@@ -106,20 +129,17 @@ resource "aws_instance" "k8s-master" {
   key_name         = aws_key_pair.k8s_key.key_name
   security_groups  = [aws_security_group.k8s_sg.name]
   iam_instance_profile = aws_iam_instance_profile.node_profile.name
-
-  associate_public_ip_address = true  # ✅ 퍼블릭 IP 자동 연결
+  associate_public_ip_address = true
 
   tags = {
     Name = "k8s-master"
   }
 
-  user_data = <<-EOF
-              #!/bin/bash
-              hostnamectl set-hostname master
-              EOF
+  user_data = replace(local.base_user_data, "__HOSTNAME__", "master")
+
 }
 
-// # 6. 워커 노드
+// # 7. 워커 노드 (2개)
 resource "aws_instance" "k8s-worker" {
   count         = 2
   ami           = "ami-0c9c942bd7bf113a2"
@@ -128,34 +148,31 @@ resource "aws_instance" "k8s-worker" {
   key_name         = aws_key_pair.k8s_key.key_name
   security_groups  = [aws_security_group.k8s_sg.name]
   iam_instance_profile = aws_iam_instance_profile.node_profile.name
-
-  associate_public_ip_address = true  # ✅ 퍼블릭 IP 자동 연결
+  associate_public_ip_address = true
 
   tags = {
     Name = "k8s-worker-${count.index + 1}"
   }
 
-  user_data = <<-EOF
-              #!/bin/bash
-              hostnamectl set-hostname worker${count.index + 1}
-              EOF
+  user_data = replace(local.base_user_data, "__HOSTNAME__", "worker${count.index + 1}")
 }
 
-// # 7. 출력
+// # 8. 출력
 output "master_public_ip" {
   value = aws_instance.k8s-master.public_ip
 }
 
 output "worker_public_ips" {
-  value = aws_instance.k8s-worker.*.public_ip
+  value = aws_instance.k8s-worker[*].public_ip
 }
 
-// # 8. Ansible 인벤토리 파일 생성
+// # 9. Ansible 인벤토리 파일 생성
 resource "local_file" "ansible_inventory" {
   content = templatefile("${path.module}/inventory.tpl", {
     master_ip    = aws_instance.k8s-master.public_ip
-    worker_ips   = aws_instance.k8s-worker.*.public_ip
+    worker_ips   = aws_instance.k8s-worker[*].public_ip
     ssh_key_path = "~/.ssh/k8s-key"
   })
   filename = "${path.module}/../ansible/inventory.ini"
 }
+

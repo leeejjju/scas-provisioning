@@ -3,6 +3,7 @@
 
 ### Ansible ###
 *.retry
+*.ini
 
 ### Terraform ###
 # Local .terraform directories
