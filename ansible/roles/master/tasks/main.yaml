@@ -4,6 +4,7 @@
   ansible.builtin.shell: |
     kubeadm init \
       --apiserver-advertise-address={{ ansible_default_ipv4.address }} \
+      --control-plane-endpoint={{ inventory_hostname }} \
       --pod-network-cidr=10.244.0.0/16 \
       --cri-socket=unix:///run/containerd/containerd.sock
   args:
@@ -46,9 +47,9 @@
     join_command: "{{ join_command_raw.stdout }}" # stdout(표준 출력) 값만 깔끔하게 저장
 
 # /etc/hosts에 private IP 저장 
-- name: Add master IP to /etc/hosts
-  lineinfile:
-    path: /etc/hosts
-    line: "{{ ansible_host }} {{ inventory_hostname }}"
-    state: present
+#- name: Add master IP to /etc/hosts
+#  lineinfile:
+#    path: /etc/hosts
+#    line: "{{ ansible_host }} {{ inventory_hostname }}"
+#    state: present
 

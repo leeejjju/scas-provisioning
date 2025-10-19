@@ -113,3 +113,27 @@
     - kubeadm
     - kubelet
     - kubectl
+
+# /etc/hosts 관련 설정
+- name: /etc/hosts 파일에서 잘못된 루프백 항목(localhost) 제거
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.0\.1\s+localhost\s+{{ inventory_hostname }}$'
+    state: absent
+    
+- name: /etc/hosts 파일에서 잘못된 퍼블릭 IP 항목 제거
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^{{ ansible_host }}.*$'
+    state: absent
+
+- name: /etc/hosts 파일에 모든 K8s 노드의 Private IP 등록
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    block: |
+      # --- Ansible Managed K8s Hosts ---
+      {% for host in groups['all'] %}
+      {{ hostvars[host]['ansible_default_ipv4']['address'] }} {{ hostvars[host]['inventory_hostname'] }}
+      {% endfor %}
+      # --- End Ansible Managed K8s Hosts ---
+    marker: "# {mark} ANSIBLE MANAGED K8s CLUSTER BLOCK"
