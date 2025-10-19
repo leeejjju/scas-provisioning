@@ -3,7 +3,7 @@
 - name: kubeadm으로 클러스터 초기화
   ansible.builtin.shell: |
     kubeadm init \
-      --apiserver-advertise-address={{ ansible_host }} \
+      --apiserver-advertise-address={{ ansible_default_ipv4.address }} \
       --pod-network-cidr=10.244.0.0/16 \
       --cri-socket=unix:///run/containerd/containerd.sock
   args:

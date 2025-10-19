@@ -1,6 +1,6 @@
 ---
 - name: 마스터 노드에서 생성된 명령어로 클러스터에 조인
-  ansible.builtin.shell: "{{ hostvars[groups['master'][0]].join_command.stdout }} --cri-socket=unix:///run/containerd/containerd.sock"
+  ansible.builtin.shell: "{{ hostvars[groups['master'][0]].join_command }} --cri-socket=unix:///run/containerd/containerd.sock"
   args:
     creates: /etc/kubernetes/kubelet.conf
   when: hostvars[groups['master'][0]].join_command is defined
