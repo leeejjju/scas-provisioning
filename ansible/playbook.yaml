@@ -1,0 +1,22 @@
+---
+- name: 모든 노드에 공통 설정 적용
+  hosts: all
+  become: yes
+  roles:
+    - common  # roles/common 디렉토리의 역할을 실행
+
+
+- name: 마스터 노드 설정
+  hosts: master
+  become: yes
+  roles:
+    - master  # roles/master 디렉토리의 역할을 실행
+
+
+- name: 워커 노드 설정
+  hosts: workers
+  become: yes
+  roles:
+    - worker  # roles/worker 디렉토리의 역할을 실행
+
+

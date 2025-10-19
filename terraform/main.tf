@@ -107,11 +107,6 @@ locals {
     # 호스트네임 설정
     hostnamectl set-hostname __HOSTNAME__
 
-    # /etc/hosts에 호스트네임 누락 방지
-    if ! grep -q "__HOSTNAME__" /etc/hosts; then
-      echo "127.0.0.1   localhost __HOSTNAME__" >> /etc/hosts
-    fi
-
     # alias 설정 추가
     echo 'alias cls="clear; ls"' >> /home/ubuntu/.bashrc
     echo 'alias c="clear; ls"' >> /home/ubuntu/.bashrc
@@ -137,7 +132,7 @@ data "aws_ami" "ubuntu" {
 // # 6. 마스터 노드
 resource "aws_instance" "k8s-master" {
   ami = data.aws_ami.ubuntu.id
-  instance_type = "t3.small"
+  instance_type = "c7i-flex.large"
 
   key_name         = aws_key_pair.k8s_key.key_name
   security_groups  = [aws_security_group.k8s_sg.name]
@@ -156,7 +151,7 @@ resource "aws_instance" "k8s-master" {
 resource "aws_instance" "k8s-worker" {
   count         = 2
   ami = data.aws_ami.ubuntu.id
-  instance_type = "t3.small"
+  instance_type = "c7i-flex.large"
 
   key_name         = aws_key_pair.k8s_key.key_name
   security_groups  = [aws_security_group.k8s_sg.name]
