@@ -1,0 +1,6 @@
+- name: 마스터 노드에 ArgoCD 설치
+  hosts: master
+  become: yes
+  roles:
+    - argocd
+

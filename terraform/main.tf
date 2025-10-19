@@ -11,6 +11,7 @@ terraform {
 provider "aws" {
   region = "ap-northeast-2"
 }
+//region = "ap-northeast-3"
 
 // # 2. SSH 키 등록
 resource "aws_key_pair" "k8s_key" {
@@ -121,9 +122,21 @@ locals {
 }
 
 
+// # 6-0 최신 AMI 자동 탐색 
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  owners      = ["099720109477"] # Canonical (Ubuntu)
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+  }
+}
+
+
 // # 6. 마스터 노드
 resource "aws_instance" "k8s-master" {
-  ami           = "ami-0c9c942bd7bf113a2"
+  ami = data.aws_ami.ubuntu.id
   instance_type = "t3.small"
 
   key_name         = aws_key_pair.k8s_key.key_name
@@ -142,7 +155,7 @@ resource "aws_instance" "k8s-master" {
 // # 7. 워커 노드 (2개)
 resource "aws_instance" "k8s-worker" {
   count         = 2
-  ami           = "ami-0c9c942bd7bf113a2"
+  ami = data.aws_ami.ubuntu.id
   instance_type = "t3.small"
 
   key_name         = aws_key_pair.k8s_key.key_name

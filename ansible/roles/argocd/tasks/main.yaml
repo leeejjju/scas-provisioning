@@ -5,13 +5,11 @@
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
 
-
 - name: Install ArgoCD core components
   shell: |
     /usr/bin/kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml --validate=false
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
-
 
 - name: Wait for ArgoCD to become ready
   shell: |
@@ -32,7 +30,7 @@
 
 - name: Apply ArgoCD frontend application
   shell: |
-    /usr/bin/kubectl apply -f /tmp/frontend-app.yaml
+    /usr/bin/kubectl apply -f https://raw.githubusercontent.com/leeejjju/scas-manifests/refs/heads/main/root-app.yaml
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
 
